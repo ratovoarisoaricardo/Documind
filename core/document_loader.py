@@ -1,41 +1,59 @@
 import os
-import tempfile
 from typing import List, Dict, Any
 from pypdf import PdfReader
 
 class DocumentProcessor:
-    """Processes uploaded documents (PDF, TXT) and splits them into chunks with metadata."""
+    """Processes uploaded documents (PDF, TXT, MD) safely with chunking and metadata sanitization."""
+    
+    MAX_FILE_SIZE = 20 * 1024 * 1024  # 20 MB Limit
     
     def __init__(self, chunk_size: int = 500, chunk_overlap: int = 50):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
+        self.chunk_size = max(100, min(chunk_size, 2000))
+        self.chunk_overlap = max(0, min(chunk_overlap, chunk_size // 2))
 
     def process_file(self, uploaded_file) -> List[Dict[str, Any]]:
-        """Reads file content and returns list of chunk dictionaries with text and metadata."""
-        filename = uploaded_file.name
+        """Reads file content safely and returns chunk dictionaries with metadata."""
+        # Security Check: File Size Limit
+        uploaded_file.seek(0, os.SEEK_END)
+        size = uploaded_file.tell()
+        uploaded_file.seek(0)
+        
+        if size > self.MAX_FILE_SIZE:
+            raise ValueError(f"File size exceeds maximum safety limit of 20MB.")
+
+        # Sanitize Filename
+        filename = os.path.basename(uploaded_file.name).replace("..", "").strip()
         file_ext = os.path.splitext(filename)[1].lower()
         
         raw_pages = []
         
         if file_ext == '.pdf':
-            reader = PdfReader(uploaded_file)
-            for idx, page in enumerate(reader.pages):
-                text = page.extract_text() or ""
-                if text.strip():
-                    raw_pages.append({"text": text, "page": idx + 1, "source": filename})
+            try:
+                reader = PdfReader(uploaded_file)
+                for idx, page in enumerate(reader.pages):
+                    text = page.extract_text() or ""
+                    if text.strip():
+                        raw_pages.append({"text": text.strip(), "page": idx + 1, "source": filename})
+            except Exception as e:
+                raise ValueError(f"Could not parse PDF file '{filename}': {str(e)}")
+                
         elif file_ext in ['.txt', '.md']:
-            text = uploaded_file.read().decode('utf-8')
-            raw_pages.append({"text": text, "page": 1, "source": filename})
+            try:
+                content_bytes = uploaded_file.read()
+                text = content_bytes.decode('utf-8', errors='ignore')
+                if text.strip():
+                    raw_pages.append({"text": text.strip(), "page": 1, "source": filename})
+            except Exception as e:
+                raise ValueError(f"Could not read text file '{filename}': {str(e)}")
         else:
-            raise ValueError(f"Unsupported file type: {file_ext}")
+            raise ValueError(f"Unsupported file type '{file_ext}'. Allowed: .pdf, .txt, .md")
 
-        # Chunking logic
+        # Sliding window chunking
         chunks = []
         for page_info in raw_pages:
             page_text = page_info["text"]
             page_num = page_info["page"]
             
-            # Simple sliding window chunker
             start = 0
             while start < len(page_text):
                 end = start + self.chunk_size

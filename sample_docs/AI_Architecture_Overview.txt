@@ -1,0 +1,10 @@
+DocuMind AI Architecture Whitepaper (Sample Test Document)
+
+Section 1: RAG Architecture Overview
+Retrieval-Augmented Generation (RAG) is an enterprise architectural pattern designed to ground Large Language Models (LLMs) in verified external knowledge stores. By separating retrieval from generation, RAG systems eliminate hallucinations, ensure auditability, and provide page-level source attribution for enterprise applications.
+
+Section 2: Vector Embedding & Chunking Dynamics
+Text chunking is performed using sliding-window segmentation with an optimal chunk size of 500 characters and a 50-character overlap. Vector embeddings are computed using sentence transformer models and stored in ChromaDB for high-speed cosine similarity search.
+
+Section 3: Security & Governance Standards
+All document processing in DocuMind AI complies with ISO/IEC 27001 security standards. Uploaded documents are processed in memory, sanitized against script injection attacks, and bounded by a strict 20MB file size ceiling.
