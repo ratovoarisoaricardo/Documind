@@ -1,5 +1,15 @@
 @echo off
-cd /d C:\Users\ABCD\OneDrive\Documents\AI\documind-ai
-pip install streamlit pypdf >nul 2>&1
+title DocuMind AI - Streamlit
+cd /d "%~dp0"
+if not exist "venv\Scripts\activate.bat" (
+    echo [INFO] Creation de l'environnement virtuel local...
+    python -m venv venv
+)
+call "venv\Scripts\activate.bat"
+if exist "requirements.txt" (
+    pip install -r requirements.txt
+) else (
+    pip install streamlit
+)
 streamlit run app.py
 pause
